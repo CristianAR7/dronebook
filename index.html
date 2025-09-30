@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="DroneBook - Conecta con pilotos profesionales de drones para eventos, fotografía y más">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DroneBook">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://picsum.photos/192/192">
+    <title>DroneBook - Plataforma Profesional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        darkMode: 'class',
+        theme: { 
+            extend: { 
+                colors: { 
+                    'primary': '#3B82F6', 
+                    'secondary': '#1E293B', 
+                    'accent': '#FBBF24', 
+                    'light': '#F1F5F9', 
+                    'dark': '#0F172A',
+                    'success': '#10B981',
+                    'warning': '#F59E0B',
+                    'danger': '#EF4444'
+                }
+            } 
+        }
+    }
+    </script>
+    <style>
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+        .notification.success { background: #10B981; color: white; }
+        .notification.error { background: #EF4444; color: white; }
+        .notification.info { background: #3B82F6; color: white; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .chat-container { height: 500px; max-height: 70vh; }
+        .messages-container { max-height: 400px; overflow-y: auto; scroll-behavior: smooth; }
+        .message-bubble { max-width: 70%; }
+        .message-sent { background: #3B82F6; color: white; margin-left: auto; }
+        .message-received { background: #F1F5F9; color: #1E293B; }
+        
+        /* === RESPONSIVE STYLES === */
+        @media (max-width: 768px) {
+            .hero-section { height: 200px !important; }
+            .hero-section h2 { font-size: 1.5rem !important; }
+            .hero-section p { font-size: 1rem !important; }
+            
+            .pilots-sidebar { width: 100% !important; max-height: 300px !important; margin-bottom: 1rem; }
+            
+            #map { height: 300px !important; }
+            
+            .grid.md\\:grid-cols-2, .grid.md\\:grid-cols-3, .grid.lg\\:grid-cols-3 {
+                grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+            }
+            
+            .chat-container { height: 100vh !important; max-height: 100vh !important; }
+            
+            .notification { right: 10px; left: 10px; width: auto; }
+            
+            /* Menú hamburguesa */
+            .mobile-menu-btn { display: block !important; }
+            .desktop-nav { display: none !important; }
+            
+            /* Bottom Navigation */
+            .bottom-nav {
+                display: flex !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                border-top: 1px solid #e5e7eb;
+                padding: 0.5rem;
+                z-index: 40;
+                justify-content: space-around;
+            }
+            
+            .bottom-nav-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 0.5rem;
+                color: #6b7280;
+                font-size: 0.75rem;
+                min-width: 60px;
+            }
+            
+            .bottom-nav-item.active {
+                color: #3B82F6;
+            }
+            
+            .bottom-nav-item i {
+                font-size: 1.25rem;
+                margin-bottom: 0.25rem;
+            }
+            
+            main { padding-bottom: 80px; }
+            
+            /* Tabs móvil */
+            .pilot-tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .pilot-tabs::-webkit-scrollbar {
+                display: none;
+            }
+            
+            .pilot-tabs button {
+                display: inline-block;
+                white-space: nowrap;
+            }
+            
+            /* Modales fullscreen en móvil */
+            #pilot-detail-modal .bg-white,
+            #booking-modal .bg-white {
+                max-width: 100% !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                max-height: 100vh !important;
+            }
+        }
+        
+        /* Hide bottom nav on desktop */
+        .bottom-nav { display: none; }
+        .mobile-menu-btn { display: none; }
+        
+        @media (min-width: 769px) {
+            .desktop-nav { display: flex !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navegación -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50 border-b border-gray-200">
+        <div class="container mx-auto px-4 md:px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-drone text-2xl text-primary"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-secondary">DroneBook</h1>
+                <span class="text-xs md:text-sm bg-primary text-white px-2 py-1 rounded-full">Pro</span>
+            </div>
+            
+            <!-- Mobile Menu Button -->
+            <button onclick="toggleMobileMenu()" class="mobile-menu-btn text-gray-600 hover:text-primary text-2xl">
+                <i id="mobile-menu-icon" class="fas fa-bars"></i>
+            </button>
+            
+            <!-- Desktop Navigation -->
+            <div id="nav-auth-links" class="desktop-nav items-center space-x-4">
+                <button onclick="openRegisterModal()" class="text-secondary hover:text-primary font-medium text-sm md:text-base">
+                    <i class="fas fa-user-plus mr-1"></i>Registrarse
+                </button>
+                <button onclick="openLoginModal()" class="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg text-sm md:text-base">
+                    <i class="fas fa-sign-in-alt mr-1"></i>Iniciar Sesión
+                </button>
+            </div>
+            
+            <div id="user-info" class="hidden desktop-nav items-center space-x-2 md:space-x-4 text-secondary">
+                <button onclick="openNotificationsPanel()" class="text-gray-600 hover:text-primary relative">
+                    <i class="fas fa-bell text-lg md:text-xl"></i>
+                    <span id="notifications-unread-badge" class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                </button>
+                <button onclick="openChatModal()" class="text-gray-600 hover:text-primary relative">
+                    <i class="fas fa-comments text-lg md:text-xl"></i>
+                    <span id="chat-unread-badge" class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                </button>
+                <div class="hidden md:flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-white text-sm"></i>
+                    </div>
+                    <span id="user-username-display" class="font-medium"></span>
+                </div>
+                <button onclick="handleLogout()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-3 md:px-4 rounded-lg text-sm md:text-base">
+                    <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Cerrar Sesión</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="hidden bg-white border-t border-gray-200 py-4 px-4">
+            <div id="mobile-auth-links" class="space-y-3">
+                <button onclick="openRegisterModal(); toggleMobileMenu();" class="w-full text-left py-2 px-4 hover:bg-gray-100 rounded">
+                    <i class="fas fa-user-plus mr-2"></i>Registrarse
+                </button>
+                <button onclick="openLoginModal(); toggleMobileMenu();" class="w-full text-left py-2 px-4 hover:bg-gray-100 rounded bg-primary text-white">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión
+                </button>
+            </div>
+            
+            <div id="mobile-user-menu" class="hidden space-y-3">
+                <div class="py-2 px-4 bg-gray-50 rounded">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <span id="mobile-username-display" class="font-medium"></span>
+                    </div>
+                </div>
+                <button onclick="openNotificationsPanel(); toggleMobileMenu();" class="w-full text-left py-2 px-4 hover:bg-gray-100 rounded relative">
+                    <i class="fas fa-bell mr-2"></i>Notificaciones
+                    <span id="mobile-notifications-badge" class="hidden absolute right-4 top-3 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                </button>
+                <button onclick="openChatModal(); toggleMobileMenu();" class="w-full text-left py-2 px-4 hover:bg-gray-100 rounded relative">
+                    <i class="fas fa-comments mr-2"></i>Mensajes
+                    <span id="mobile-chat-badge" class="hidden absolute right-4 top-3 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                </button>
+                <button onclick="handleLogout(); toggleMobileMenu();" class="w-full text-left py-2 px-4 hover:bg-gray-100 rounded text-red-600">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Bottom Navigation Mobile -->
+    <div class="bottom-nav">
+        <a href="#" onclick="scrollToSection('public-content'); return false;" class="bottom-nav-item active">
+            <i class="fas fa-home"></i>
+            <span>Inicio</span>
+        </a>
+        <a href="#" onclick="scrollToSection('map'); return false;" class="bottom-nav-item">
+            <i class="fas fa-map-marked-alt"></i>
+            <span>Mapa</span>
+        </a>
+        <a href="#" onclick="openChatModal(); return false;" class="bottom-nav-item">
+            <i class="fas fa-comments"></i>
+            <span>Chat</span>
+        </a>
+        <a href="#" onclick="openNotificationsPanel(); return false;" class="bottom-nav-item">
+            <i class="fas fa-bell"></i>
+            <span>Avisos</span>
+        </a>
+        <a href="#" onclick="showUserSection(); return false;" class="bottom-nav-item">
+            <i class="fas fa-user"></i>
+            <span>Perfil</span>
+        </a>
+    </div>
+
+    <!-- Hero Section -->
+    <header id="hero-section" class="hero-section relative gradient-bg h-96 flex items-center justify-center text-white">
+        <div class="absolute inset-0 bg-black opacity-30"></div>
+        <div class="relative z-10 text-center px-4">
+            <h2 class="text-3xl md:text-5xl font-bold mb-4">Conecta con Pilotos Profesionales</h2>
+            <p class="text-lg md:text-xl mb-8">La plataforma más avanzada para servicios de drones</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+<!-- Dashboard del Piloto COMPLETO -->
+        <div id="pilot-dashboard-section" class="space-y-8" style="display: none;">
+            <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+                <div class="border-b border-gray-200 overflow-x-auto">
+                    <nav class="pilot-tabs -mb-px flex space-x-4 md:space-x-8">
+                        <button onclick="switchTab('bookings')" id="tab-bookings" class="border-primary text-primary py-4 px-1 border-b-2 font-medium text-xs md:text-sm whitespace-nowrap">
+                            <i class="fas fa-calendar-alt mr-1 md:mr-2"></i>Reservas
+                        </button>
+                        <button onclick="switchTab('availability')" id="tab-availability" class="border-transparent text-gray-500 hover:text-gray-700 py-4 px-1 border-b-2 font-medium text-xs md:text-sm whitespace-nowrap">
+                            <i class="fas fa-clock mr-1 md:mr-2"></i>Disponibilidad
+                        </button>
+                        <button onclick="switchTab('profile')" id="tab-profile" class="border-transparent text-gray-500 hover:text-gray-700 py-4 px-1 border-b-2 font-medium text-xs md:text-sm whitespace-nowrap">
+                            <i class="fas fa-user-edit mr-1 md:mr-2"></i>Perfil
+                        </button>
+                        <button onclick="switchTab('certifications')" id="tab-certifications" class="border-transparent text-gray-500 hover:text-gray-700 py-4 px-1 border-b-2 font-medium text-xs md:text-sm whitespace-nowrap">
+                            <i class="fas fa-certificate mr-1 md:mr-2"></i>Certificaciones
+                        </button>
+                        <button onclick="switchTab('services')" id="tab-services" class="border-transparent text-gray-500 hover:text-gray-700 py-4 px-1 border-b-2 font-medium text-xs md:text-sm whitespace-nowrap">
+                            <i class="fas fa-briefcase mr-1 md:mr-2"></i>Servicios
+                        </button>
+                        <button onclick="switchTab('portfolio')" id="tab-portfolio" class="border-transparent text-gray-500 hover:text-gray-700 py-4 px-1 border-b-2 font-medium text-xs md:text-sm whitespace-nowrap">
+                            <i class="fas fa-images mr-1 md:mr-2"></i>Portfolio
+                        </button>
+                    </nav>
+                </div>
+                
+                <!-- Tab Reservas -->
+                <div id="tab-content-bookings" class="py-6">
+                    <div id="bookings-list" class="space-y-4"></div>
+                </div>
+                
+                <!-- Tab Disponibilidad -->
+                <div id="tab-content-availability" class="py-6 hidden">
+                    <h3 class="text-xl font-bold mb-4">Gestionar Disponibilidad</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold mb-3">Añadir Disponibilidad</h4>
+                            <div class="space-y-3">
+                                <input type="date" id="availability-date" class="w-full px-4 py-2 border rounded-lg">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="time" id="availability-start" class="px-4 py-2 border rounded-lg">
+                                    <input type="time" id="availability-end" class="px-4 py-2 border rounded-lg">
+                                </div>
+                                <button onclick="addAvailabilitySlot()" class="w-full bg-success text-white font-bold py-2 rounded-lg">
+                                    <i class="fas fa-plus mr-1"></i>Añadir
+                                </button>
+                            </div>
+                            <div id="availability-message" class="mt-3"></div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-3">Mis Horarios</h4>
+                            <div id="my-availability-list" class="space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab Perfil -->
+                <div id="tab-content-profile" class="py-6 hidden">
+                    <div class="bg-gray-50 p-4 md:p-6 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">Información Básica</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="profile-name" placeholder="Nombre" class="w-full px-4 py-2 border rounded-lg">
+                            <input type="tel" id="profile-phone" placeholder="Teléfono" class="w-full px-4 py-2 border rounded-lg">
+                            <input type="text" id="profile-location" placeholder="Ubicación (ciudad)" class="w-full px-4 py-2 border rounded-lg">
+                            <input type="number" id="profile-hourly-rate" placeholder="Tarifa/hora (€)" class="w-full px-4 py-2 border rounded-lg">
+                            <textarea id="profile-tagline" placeholder="Eslogan" class="md:col-span-2 w-full px-4 py-2 border rounded-lg"></textarea>
+                            <textarea id="profile-bio" placeholder="Biografía" rows="4" class="md:col-span-2 w-full px-4 py-2 border rounded-lg"></textarea>
+                        </div>
+                        <button onclick="saveProfile()" class="mt-4 w-full md:w-auto bg-accent text-secondary font-bold py-2 px-6 rounded-lg">Guardar</button>
+                        <div id="profile-message" class="mt-3"></div>
+                    </div>
+                </div>
+                
+                <!-- Tab Certificaciones -->
+                <div id="tab-content-certifications" class="py-6 hidden">
+                    <div class="space-y-6">
+                        <div class="bg-gray-50 p-4 md:p-6 rounded-lg">
+                            <h3 class="text-xl font-bold mb-4">Mis Especialidades (Badges)</h3>
+                            <div id="my-badges-list" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6"></div>
+                            <div class="border-t pt-4">
+                                <h4 class="font-semibold mb-3">Añadir Nueva Especialidad</h4>
+                                <select id="badge-type-select" class="w-full px-4 py-2 border rounded-lg mb-3">
+                                    <option value="">Selecciona una especialidad</option>
+                                    <option value="wedding">💍 Bodas y Eventos Sociales</option>
+                                    <option value="real_estate">🏢 Fotografía Inmobiliaria</option>
+                                    <option value="inspection">🔧 Inspección Técnica</option>
+                                    <option value="agriculture">🌾 Agricultura de Precisión</option>
+                                    <option value="film">🎬 Producción Audiovisual</option>
+                                    <option value="sports">⚽ Eventos Deportivos</option>
+                                </select>
+                                <button onclick="addBadge()" class="w-full md:w-auto bg-primary text-white font-bold py-2 px-6 rounded-lg">
+                                    <i class="fas fa-plus mr-2"></i>Añadir Badge
+                                </button>
+                                <div id="badge-message" class="mt-3"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 md:p-6 rounded-lg">
+                            <h3 class="text-xl font-bold mb-4">Certificaciones y Licencias</h3>
+                            <div id="my-certifications-list" class="space-y-4 mb-6"></div>
+                            <div class="border-t pt-4">
+                                <h4 class="font-semibold mb-3">Añadir Nueva Certificación</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <select id="cert-type" class="px-4 py-2 border rounded-lg">
+                                        <option value="license">Licencia de Piloto</option>
+                                        <option value="insurance">Seguro</option>
+                                        <option value="training">Formación</option>
+                                        <option value="specialization">Especialización</option>
+                                    </select>
+                                    <input type="text" id="cert-name" placeholder="Nombre del certificado" class="px-4 py-2 border rounded-lg">
+                                    <input type="date" id="cert-issue-date" placeholder="Fecha de emisión" class="px-4 py-2 border rounded-lg">
+                                    <input type="date" id="cert-expiry-date" placeholder="Fecha de caducidad" class="px-4 py-2 border rounded-lg">
+                                    <textarea id="cert-description" placeholder="Descripción" rows="2" class="md:col-span-2 px-4 py-2 border rounded-lg"></textarea>
+                                    <input type="file" id="cert-document" accept=".pdf,.jpg,.jpeg,.png" class="md:col-span-2 px-4 py-2 border rounded-lg">
+                                </div>
+                                <button onclick="addCertification()" class="mt-3 w-full md:w-auto bg-success text-white font-bold py-2 px-6 rounded-lg">
+                                    <i class="fas fa-upload mr-2"></i>Subir Certificación
+                                </button>
+                                <div id="certification-message" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab Servicios -->
+                <div id="tab-content-services" class="py-6 hidden">
+                    <div class="bg-gray-50 p-4 md:p-6 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">Mis Servicios</h3>
+                        <div id="service-list" class="mb-4"></div>
+                        <div class="border-t pt-4">
+                            <h4 class="font-semibold mb-3">Añadir Servicio</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="text" id="service-name" placeholder="Nombre del servicio" class="w-full px-4 py-2 border rounded-lg">
+                                <input type="number" id="service-price" placeholder="Precio (€)" class="w-full px-4 py-2 border rounded-lg">
+                                <input type="number" id="service-duration" placeholder="Duración (horas)" value="2" class="w-full px-4 py-2 border rounded-lg">
+                                <textarea id="service-description" placeholder="Descripción" rows="2" class="md:col-span-2 w-full px-4 py-2 border rounded-lg"></textarea>
+                            </div>
+                            <button onclick="addService()" class="mt-3 w-full md:w-auto bg-primary text-white font-bold py-2 px-6 rounded-lg">Añadir Servicio</button>
+                            <div id="service-message" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab Portfolio -->
+                <div id="tab-content-portfolio" class="py-6 hidden">
+                    <div class="bg-gray-50 p-4 md:p-6 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">Mi Portfolio</h3>
+                        <div id="portfolio-gallery" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
+                        <div class="border-t pt-4">
+                            <h4 class="font-semibold mb-3">Subir Nueva Imagen</h4>
+                            <input type="file" id="portfolio-file" accept="image/*" class="w-full mb-3 border rounded-lg p-2">
+                            <input type="text" id="portfolio-title" placeholder="Título (opcional)" class="w-full mb-3 px-4 py-2 border rounded-lg">
+                            <textarea id="portfolio-description" placeholder="Descripción (opcional)" rows="2" class="w-full mb-3 px-4 py-2 border rounded-lg"></textarea>
+                            <button onclick="uploadPortfolio()" class="w-full md:w-auto bg-primary text-white font-bold py-2 px-6 rounded-lg">Subir Imagen</button>
+                            <div id="portfolio-message" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard del Cliente -->
+        <div id="client-bookings-section" class="bg-white p-4 md:p-6 rounded-xl shadow-lg mb-8" style="display: none;">
+            <h2 class="text-xl md:text-2xl font-bold mb-6">
+                <i class="fas fa-calendar-check mr-3"></i>Mis Reservas
+            </h2>
+            <div id="client-bookings-list" class="space-y-4"></div>
+        </div>
+<!-- Contenido Público -->
+        <div id="public-content">
+            <!-- Búsqueda con IA -->
+            <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg mb-8 md:mb-12 -mt-10 md:-mt-20 relative z-10">
+                <h2 class="text-lg md:text-2xl font-bold mb-4">Búsqueda Inteligente con IA</h2>
+                <div class="flex flex-col md:flex-row gap-2">
+                    <input type="text" id="ai-search-input" placeholder="Ej: piloto para boda en Barcelona..." class="flex-1 px-4 py-3 border rounded-lg text-sm md:text-base">
+                    <button onclick="handleAiSearch()" class="bg-accent hover:bg-yellow-500 text-secondary font-bold py-3 px-6 rounded-lg whitespace-nowrap">
+                        <i class="fas fa-search mr-2"></i>Buscar
+                    </button>
+                </div>
+                <div id="ai-result-container" class="mt-4 p-4 bg-blue-50 border rounded-lg hidden text-sm md:text-base"></div>
+            </div>
+
+            <!-- Mapa de Pilotos RESPONSIVE -->
+            <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg mb-8">
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 space-y-3 md:space-y-0">
+                    <h2 class="text-lg md:text-2xl font-bold">Encuentra Pilotos Cerca</h2>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                        <button onclick="getCurrentLocation()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 text-sm md:text-base">
+                            <i class="fas fa-crosshairs mr-2"></i>Mi Ubicación
+                        </button>
+                        <select id="radius-select" onchange="updateMapRadius()" class="px-3 py-2 border rounded-lg text-sm md:text-base">
+                            <option value="5">5 km</option>
+                            <option value="10">10 km</option>
+                            <option value="25" selected>25 km</option>
+                            <option value="50">50 km</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div id="pilots-sidebar" class="pilots-sidebar w-full md:w-1/3 space-y-4 max-h-96 overflow-y-auto">
+                        <div id="nearby-pilots-list">
+                            <p class="text-gray-500 text-center text-sm md:text-base">Busca pilotos cercanos</p>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div id="map" class="w-full h-96 border rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+    
+            <h2 class="text-2xl md:text-4xl font-bold mb-8 text-center">Todos los Pilotos Profesionales</h2>
+            <div id="pilots-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8"></div>
+        </div>
+    </main>
+
+    <!-- Panel de Notificaciones -->
+    <div id="notifications-panel" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-50 overflow-y-auto">
+        <div class="p-4 border-b bg-gray-50 sticky top-0">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg md:text-xl font-bold">
+                    <i class="fas fa-bell mr-2 text-primary"></i>Notificaciones
+                </h2>
+                <div class="flex items-center space-x-2">
+                    <button onclick="markAllNotificationsRead()" class="text-xs md:text-sm text-primary hover:text-blue-700">
+                        <i class="fas fa-check-double mr-1"></i>Marcar todas
+                    </button>
+                    <button onclick="closeNotificationsPanel()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                </div>
+            </div>
+        </div>
+        <div id="notifications-list" class="divide-y">
+            <div class="text-center py-12 text-gray-500">
+                <i class="fas fa-bell-slash text-4xl mb-3"></i>
+                <p>No tienes notificaciones</p>
+            </div>
+        </div>
+    </div>
+    <div id="notifications-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40" onclick="closeNotificationsPanel()"></div>
+
+    <!-- Modal de Chat RESPONSIVE -->
+    <div id="chat-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-0 md:p-4">
+        <div class="bg-white rounded-none md:rounded-xl shadow-xl w-full h-full md:h-auto md:max-w-4xl chat-container">
+            <div class="flex h-full">
+                <div class="w-full md:w-1/3 border-r bg-gray-50">
+                    <div class="p-4 border-b">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-lg md:text-xl font-bold">Mensajes</h2>
+                            <button onclick="closeChatModal()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+                        </div>
+                    </div>
+                    <div id="conversations-list" class="p-2 overflow-y-auto" style="height: calc(100vh - 140px); max-height: 400px;"></div>
+                </div>
+                
+                <div class="hidden md:flex flex-1 flex-col">
+                    <div id="no-conversation" class="flex items-center justify-center h-full text-gray-500">
+                        <div class="text-center">
+                            <i class="fas fa-comments text-4xl mb-4"></i>
+                            <p class="text-lg">Selecciona una conversación</p>
+                        </div>
+                    </div>
+                    <div id="chat-area" class="hidden flex flex-col h-full">
+                        <div id="chat-header" class="p-4 border-b">
+                            <div class="flex items-center space-x-3">
+                                <img id="chat-avatar" src="" class="w-10 h-10 rounded-full">
+                                <h3 id="chat-name" class="font-semibold"></h3>
+                            </div>
+                        </div>
+                        <div id="messages-container" class="flex-1 p-4 overflow-y-auto messages-container">
+                            <div id="messages-list" class="space-y-3"></div>
+                        </div>
+                        <div class="p-4 border-t">
+                            <div class="flex space-x-2">
+                                <input type="text" id="message-input" placeholder="Escribe tu mensaje..." class="flex-1 px-4 py-2 border rounded-lg">
+                                <button onclick="sendMessage()" class="bg-primary text-white px-4 py-2 rounded-lg">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modales RESPONSIVE -->
+    <div id="register-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4"></div>
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4"></div>
+    <div id="pilot-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+        <div id="pilot-detail-content" class="bg-white p-4 md:p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-full overflow-y-auto"></div>
+    </div>
+    <div id="booking-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white p-4 md:p-6 rounded-xl shadow-xl w-full max-w-2xl max-h-full overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl md:text-2xl font-bold">Nueva Reserva</h2>
+                <button onclick="closeBookingModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="booking-form-content"></div>
+        </div>
+    </div>
+<script>
+        let currentUser = null;
+        let selectedPilot = null;
+        let selectedConversation = null;
+        let chatRefreshInterval = null;
+        let map = null;
+        let userMarker = null;
+        let pilotMarkers = [];
+        let userLocation = null;
+        let googleMapsLoaded = false;
+        const API_URL = 'http://127.0.0.1:5000';
+        const GOOGLE_MAPS_API_KEY = 'TU_API_KEY_AQUI'; // ⚠️ REEMPLAZA CON TU CLAVE REAL
+
+        // === FUNCIONES RESPONSIVE ===
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const icon = document.getElementById('mobile-menu-icon');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            } else {
+                menu.classList.add('hidden');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        }
+
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function showUserSection() {
+            if (!currentUser) {
+                openLoginModal();
+                return;
+            }
+            if (currentUser.role === 'Piloto') {
+                document.getElementById('public-content').style.display = 'none';
+                document.getElementById('pilot-dashboard-section').style.display = 'block';
+                switchTab('bookings');
+            } else {
+                scrollToSection('client-bookings-section');
+            }
+        }
+
+        function updateMobileBadges() {
+            const notificationsBadge = document.getElementById('notifications-unread-badge');
+            const chatBadge = document.getElementById('chat-unread-badge');
+            const mobileNotifBadge = document.getElementById('mobile-notifications-badge');
+            const mobileChatBadge = document.getElementById('mobile-chat-badge');
+            
+            if (notificationsBadge && !notificationsBadge.classList.contains('hidden')) {
+                mobileNotifBadge.textContent = notificationsBadge.textContent;
+                mobileNotifBadge.classList.remove('hidden');
+            } else if (mobileNotifBadge) {
+                mobileNotifBadge.classList.add('hidden');
+            }
+            
+            if (chatBadge && !chatBadge.classList.contains('hidden')) {
+                mobileChatBadge.textContent = chatBadge.textContent;
+                mobileChatBadge.classList.remove('hidden');
+            } else if (mobileChatBadge) {
+                mobileChatBadge.classList.add('hidden');
+            }
+        }
+
+        // === PWA SERVICE WORKER ===
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('Service Worker falló:', err));
+            });
+        }
+
+        // Detectar instalación PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallButton();
+        });
+
+        function showInstallButton() {
+            // Crear botón de instalación (opcional)
+            const installBtn = document.createElement('button');
+            installBtn.innerHTML = '<i class="fas fa-download mr-2"></i>Instalar App';
+            installBtn.className = 'fixed bottom-20 right-4 bg-primary text-white px-4 py-2 rounded-lg shadow-lg z-40 text-sm';
+            installBtn.onclick = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        console.log('PWA instalada');
+                    }
+                    deferredPrompt = null;
+                    installBtn.remove();
+                }
+            };
+            document.body.appendChild(installBtn);
+        }
+
+        // === INICIALIZACIÓN ===
+        document.addEventListener('DOMContentLoaded', async function() {
+            loadAllPilots();
+            showNotification('Bienvenido a DroneBook Pro!', 'info');
+            
+            try {
+                await loadGoogleMaps();
+                initializeMap();
+            } catch (error) {
+                console.error('Error cargando Google Maps:', error);
+                showNotification('Error al cargar el mapa. Verifica tu API key.', 'error');
+            }
+            
+            const messageInput = document.getElementById('message-input');
+            if (messageInput) {
+                messageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+            }
+
+            // Actualizar badges móviles cada 5 segundos
+            setInterval(updateMobileBadges, 5000);
+        });
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            notification.innerHTML = '<i class="fas fa-info-circle mr-2"></i>' + message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 4000);
+        }
+// === FUNCIONES DE NOTIFICACIONES ===
+        async function loadNotifications() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch(API_URL + '/api/notifications?email=' + currentUser.email);
+                const data = await response.json();
+                if (response.ok) {
+                    displayNotifications(data.notifications);
+                    updateNotificationBadge(data.unread_count);
+                    updateMobileBadges();
+                }
+            } catch (error) {
+                console.error('Error cargando notificaciones:', error);
+            }
+        }
+
+        function displayNotifications(notifications) {
+            const container = document.getElementById('notifications-list');
+            if (notifications.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <i class="fas fa-bell-slash text-4xl mb-3"></i>
+                        <p>No tienes notificaciones</p>
+                    </div>`;
+                return;
+            }
+            
+            const typeIcons = {
+                'booking': 'fa-calendar-check', 'payment': 'fa-euro-sign',
+                'message': 'fa-comments', 'certification': 'fa-certificate', 'system': 'fa-info-circle'
+            };
+            const typeColors = {
+                'booking': 'text-blue-600', 'payment': 'text-green-600',
+                'message': 'text-purple-600', 'certification': 'text-yellow-600', 'system': 'text-gray-600'
+            };
+            
+            container.innerHTML = notifications.map(notif => `
+                <div class="p-4 hover:bg-gray-50 cursor-pointer ${notif.is_read ? 'bg-white' : 'bg-blue-50'}" 
+                     onclick="handleNotificationClick(${notif.id}, '${notif.link || ''}')">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            <i class="fas ${typeIcons[notif.notification_type] || 'fa-bell'} ${typeColors[notif.notification_type] || 'text-gray-600'} text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm ${notif.is_read ? 'text-gray-700' : 'text-gray-900'}">${notif.title}</p>
+                            <p class="text-sm text-gray-600 mt-1">${notif.message}</p>
+                            <p class="text-xs text-gray-400 mt-2">${notif.time_ago}</p>
+                        </div>
+                        ${!notif.is_read ? '<div class="flex-shrink-0"><div class="w-2 h-2 bg-blue-500 rounded-full"></div></div>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateNotificationBadge(count) {
+            const badge = document.getElementById('notifications-unread-badge');
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+            updateMobileBadges();
+        }
+
+        function openNotificationsPanel() {
+            if (!currentUser) {
+                showNotification('Debes iniciar sesión para ver notificaciones', 'error');
+                return;
+            }
+            document.getElementById('notifications-panel').classList.remove('translate-x-full');
+            document.getElementById('notifications-overlay').classList.remove('hidden');
+            loadNotifications();
+        }
+
+        function closeNotificationsPanel() {
+            document.getElementById('notifications-panel').classList.add('translate-x-full');
+            document.getElementById('notifications-overlay').classList.add('hidden');
+        }
+
+        async function handleNotificationClick(notifId, link) {
+            try {
+                await fetch(API_URL + '/api/notifications/' + notifId + '/read', { method: 'POST' });
+                loadNotifications();
+                if (link) {
+                    closeNotificationsPanel();
+                    if (link.startsWith('/dashboard')) {
+                        if (currentUser.role === 'Piloto') {
+                            document.getElementById('public-content').style.display = 'none';
+                            document.getElementById('pilot-dashboard-section').style.display = 'block';
+                            switchTab('bookings');
+                        }
+                    } else if (link.startsWith('/bookings')) {
+                        loadMyBookings();
+                    } else if (link.startsWith('/chat')) {
+                        const conversationId = link.split('/').pop();
+                        openChatModal();
+                        setTimeout(() => selectConversation(parseInt(conversationId)), 500);
+                    }
+                }
+            } catch (error) {
+                console.error('Error marcando notificación:', error);
+            }
+        }
+
+        async function markAllNotificationsRead() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch(API_URL + '/api/notifications/mark-all-read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentUser.email })
+                });
+                if (response.ok) {
+                    showNotification('Todas las notificaciones marcadas como leídas', 'success');
+                    loadNotifications();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // === GOOGLE MAPS (igual que antes) ===
+        function loadGoogleMaps() {
+            return new Promise((resolve, reject) => {
+                if (typeof google !== 'undefined' && google.maps) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+                script.async = true;
+                script.defer = true;
+                script.onload = () => { googleMapsLoaded = true; resolve(); };
+                script.onerror = () => reject(new Error('Error cargando Google Maps'));
+                document.head.appendChild(script);
+            });
+        }
+
+        function initializeMap() {
+            if (!googleMapsLoaded || typeof google === 'undefined') return;
+            try {
+                map = new google.maps.Map(document.getElementById('map'), {
+                    zoom: 6,
+                    center: { lat: 40.4168, lng: -3.7038 },
+                    styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
+                });
+                getCurrentLocation();
+            } catch (error) {
+                console.error('Error inicializando mapa:', error);
+            }
+        }
+
+        function getCurrentLocation() {
+            if (!map) return;
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+                        map.setCenter(userLocation);
+                        map.setZoom(12);
+                        if (userMarker) userMarker.setMap(null);
+                        userMarker = new google.maps.Marker({
+                            position: userLocation, map: map, title: 'Tu ubicación',
+                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#3B82F6', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 3 }
+                        });
+                        searchNearbyPilots();
+                        showNotification('Ubicación obtenida', 'success');
+                    },
+                    function(error) {
+                        userLocation = { lat: 40.4168, lng: -3.7038 };
+                        map.setCenter(userLocation);
+                        map.setZoom(6);
+                        showNotification('Usando ubicación por defecto (Madrid)', 'info');
+                        searchNearbyPilots();
+                    }
+                );
+            } else {
+                userLocation = { lat: 40.4168, lng: -3.7038 };
+                map.setCenter(userLocation);
+                searchNearbyPilots();
+            }
+        }
+
+        async function searchNearbyPilots() {
+            if (!userLocation) return;
+            const radius = parseInt(document.getElementById('radius-select').value);
+            try {
+                const response = await fetch(API_URL + '/api/pilots/nearby', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latitude: userLocation.lat, longitude: userLocation.lng, radius: radius })
+                });
+                const nearbyPilots = await response.json();
+                if (response.ok) {
+                    displayPilotsOnMap(nearbyPilots);
+                    displayPilotsList(nearbyPilots);
+                }
+            } catch (error) {
+                console.error('Error buscando pilotos:', error);
+            }
+        }
+
+        function displayPilotsOnMap(pilots) {
+            pilotMarkers.forEach(marker => marker.setMap(null));
+            pilotMarkers = [];
+            pilots.forEach(pilot => {
+                if (pilot.latitude && pilot.longitude) {
+                    const marker = new google.maps.Marker({
+                        position: { lat: pilot.latitude, lng: pilot.longitude },
+                        map: map,
+                        title: pilot.name,
+                        icon: {
+                            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M20 35C20 35 35 25 35 15C35 6.716 28.284 0 20 0S5 6.716 5 15C5 25 20 35 20 35Z" fill="#FBBF24"/>
+                                    <circle cx="20" cy="15" r="8" fill="white"/>
+                                </svg>
+                            `),
+                            scaledSize: new google.maps.Size(40, 40),
+                            anchor: new google.maps.Point(20, 35)
+                        }
+                    });
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: `<div class="p-2"><h3 class="font-bold">${pilot.name}</h3>
+                                  <p class="text-sm">${pilot.distance} km</p>
+                                  <button onclick="openPilotDetailModal(${pilot.id})" class="bg-primary text-white px-3 py-1 rounded text-sm mt-2">Ver Perfil</button></div>`
+                    });
+                    marker.addListener('click', () => infoWindow.open(map, marker));
+                    pilotMarkers.push(marker);
+                }
+            });
+        }
+
+        function displayPilotsList(pilots) {
+            const container = document.getElementById('nearby-pilots-list');
+            if (pilots.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center text-sm">No hay pilotos en esta área</p>';
+                return;
+            }
+            container.innerHTML = pilots.map(pilot => `
+                <div class="bg-gray-50 p-3 md:p-4 rounded-lg border hover:bg-gray-100 cursor-pointer" onclick="map.setCenter({lat: ${pilot.latitude}, lng: ${pilot.longitude}}); map.setZoom(15);">
+                    <div class="flex items-center space-x-3">
+                        <img src="https://picsum.photos/seed/${pilot.id}/50/50" class="w-10 h-10 md:w-12 md:h-12 rounded-full">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-sm md:text-base">${pilot.name}</h4>
+                            <p class="text-xs md:text-sm text-gray-600">${pilot.tagline || 'Piloto profesional'}</p>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs md:text-sm text-primary font-medium">${pilot.distance} km</span>
+                                <span class="text-xs md:text-sm font-bold">€${pilot.hourly_rate}/h</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 flex space-x-2">
+                        <button onclick="event.stopPropagation(); openPilotDetailModal(${pilot.id})" class="flex-1 bg-primary text-white text-xs md:text-sm px-2 md:px-3 py-1 rounded">Ver Perfil</button>
+                        ${currentUser && currentUser.role === 'Cliente' ? 
+                            `<button onclick="event.stopPropagation(); startConversationWithPilot(${pilot.id}, '${pilot.name.replace(/'/g, "\\'")}')" class="flex-1 bg-green-500 text-white text-xs md:text-sm px-2 md:px-3 py-1 rounded">Mensaje</button>` : ''
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateMapRadius() {
+            searchNearbyPilots();
+        }
+
+        // === BÚSQUEDA CON IA ===
+        async function handleAiSearch() {
+            const input = document.getElementById('ai-search-input');
+            const container = document.getElementById('ai-result-container');
+            const query = input.value.trim();
+            if (!query) {
+                container.innerHTML = '<p class="text-yellow-600">Describe qué tipo de piloto necesitas</p>';
+                container.classList.remove('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+            container.innerHTML = '<p><i class="fas fa-spinner fa-spin mr-2"></i>Buscando con IA...</p>';
+            try {
+                const response = await fetch(API_URL + '/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                container.innerHTML = '<div class="bg-white p-4 rounded border-l-4 border-blue-500"><h4 class="font-semibold text-blue-800 mb-2">Recomendación de IA</h4><p>' + data.recommendation.replace(/\n/g, '<br>') + '</p></div>';
+            } catch (error) {
+                container.innerHTML = '<p class="text-red-500">Error: ' + error.message + '</p>';
+            }
+        }
+// === AUTH Y UI ===
+        function startUnreadCountPolling() {
+            if (!currentUser) return;
+            updateUnreadCount();
+            loadNotifications();
+            if (chatRefreshInterval) clearInterval(chatRefreshInterval);
+            chatRefreshInterval = setInterval(function() {
+                updateUnreadCount();
+                loadNotifications();
+                if (selectedConversation) loadMessages(selectedConversation.id);
+            }, 5000);
+        }
+
+        async function updateUnreadCount() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch(API_URL + '/api/chat/unread-count?email=' + currentUser.email);
+                const data = await response.json();
+                const badge = document.getElementById('chat-unread-badge');
+                if (data.unread_count > 0) {
+                    badge.textContent = data.unread_count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+                updateMobileBadges();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function updateUIAfterLogin() {
+            if (!currentUser) return;
+            
+            // Desktop
+            document.getElementById('nav-auth-links').classList.add('hidden');
+            document.getElementById('user-info').classList.remove('hidden');
+            document.getElementById('user-info').classList.add('flex');
+            document.getElementById('user-username-display').innerText = currentUser.username;
+            
+            // Mobile
+            document.getElementById('mobile-auth-links').classList.add('hidden');
+            document.getElementById('mobile-user-menu').classList.remove('hidden');
+            document.getElementById('mobile-username-display').innerText = currentUser.username;
+            
+            closeLoginModal();
+            startUnreadCountPolling();
+            
+            if (currentUser.role === 'Piloto') {
+                document.getElementById('public-content').style.display = 'none';
+                document.getElementById('pilot-dashboard-section').style.display = 'block';
+                switchTab('bookings');
+                loadProfile();
+                showNotification('Bienvenido piloto ' + currentUser.username, 'success');
+            } else {
+                document.getElementById('client-bookings-section').style.display = 'block';
+                loadMyBookings();
+                showNotification('Bienvenido ' + currentUser.username, 'success');
+            }
+            loadAllPilots();
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            if (chatRefreshInterval) clearInterval(chatRefreshInterval);
+            
+            // Desktop
+            document.getElementById('nav-auth-links').classList.remove('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+            
+            // Mobile
+            document.getElementById('mobile-auth-links').classList.remove('hidden');
+            document.getElementById('mobile-user-menu').classList.add('hidden');
+            
+            document.getElementById('pilot-dashboard-section').style.display = 'none';
+            document.getElementById('client-bookings-section').style.display = 'none';
+            document.getElementById('public-content').style.display = 'block';
+            document.getElementById('chat-unread-badge').classList.add('hidden');
+            document.getElementById('notifications-unread-badge').classList.add('hidden');
+            showNotification('Sesión cerrada', 'info');
+        }
+
+        function openLoginModal() {
+            const modal = document.getElementById('login-modal');
+            modal.classList.remove('hidden');
+            modal.innerHTML = `
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-md">
+                    <h2 class="text-xl md:text-2xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+                    <div class="space-y-4">
+                        <input type="email" id="login-email" placeholder="Email" class="w-full px-4 py-3 border rounded-lg text-sm md:text-base">
+                        <input type="password" id="login-password" placeholder="Contraseña" class="w-full px-4 py-3 border rounded-lg text-sm md:text-base">
+                        <button onclick="handleLogin()" class="w-full bg-primary text-white font-bold py-3 rounded-lg">Entrar</button>
+                        <button onclick="closeLoginModal()" class="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg">Cancelar</button>
+                    </div>
+                    <div id="login-message" class="mt-4 text-center text-sm"></div>
+                </div>`;
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+
+        function openRegisterModal() {
+            const modal = document.getElementById('register-modal');
+            modal.classList.remove('hidden');
+            modal.innerHTML = `
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-md">
+                    <h2 class="text-xl md:text-2xl font-bold mb-6 text-center">Crear Cuenta</h2>
+                    <div class="space-y-4">
+                        <input type="text" id="register-username" placeholder="Usuario" class="w-full px-4 py-3 border rounded-lg text-sm md:text-base">
+                        <input type="email" id="register-email" placeholder="Email" class="w-full px-4 py-3 border rounded-lg text-sm md:text-base">
+                        <input type="password" id="register-password" placeholder="Contraseña" class="w-full px-4 py-3 border rounded-lg text-sm md:text-base">
+                        <input type="password" id="register-password-confirm" placeholder="Confirmar contraseña" class="w-full px-4 py-3 border rounded-lg text-sm md:text-base">
+                        <div class="flex space-x-4 text-sm md:text-base">
+                            <label><input type="radio" name="role" value="Cliente" checked> Cliente</label>
+                            <label><input type="radio" name="role" value="Piloto"> Piloto</label>
+                        </div>
+                        <button onclick="handleRegister()" class="w-full bg-primary text-white font-bold py-3 rounded-lg">Registrar</button>
+                        <button onclick="closeRegisterModal()" class="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg">Cancelar</button>
+                    </div>
+                    <div id="register-message" class="mt-4 text-center text-sm"></div>
+                </div>`;
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('register-modal').classList.add('hidden');
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const messageDiv = document.getElementById('login-message');
+            try {
+                const response = await fetch(API_URL + '/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                currentUser = data.user;
+                updateUIAfterLogin();
+            } catch (error) {
+                messageDiv.innerHTML = '<p class="text-red-500">' + error.message + '</p>';
+            }
+        }
+
+        async function handleRegister() {
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const password_confirm = document.getElementById('register-password-confirm').value;
+            const role = document.querySelector('input[name="role"]:checked').value;
+            const messageDiv = document.getElementById('register-message');
+            if (password !== password_confirm) {
+                messageDiv.innerHTML = '<p class="text-red-500">Las contraseñas no coinciden</p>';
+                return;
+            }
+            try {
+                const response = await fetch(API_URL + '/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, password_confirm, role })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                messageDiv.innerHTML = '<p class="text-green-500">Cuenta creada. Ya puedes iniciar sesión.</p>';
+                setTimeout(() => { closeRegisterModal(); openLoginModal(); }, 2000);
+            } catch (error) {
+                messageDiv.innerHTML = '<p class="text-red-500">' + error.message + '</p>';
+            }
+        }
+
+        // === CHAT (versión anterior completa) ===
+        async function openChatModal() {
+            if (!currentUser) {
+                showNotification('Debes iniciar sesión para usar el chat', 'error');
+                return;
+            }
+            document.getElementById('chat-modal').classList.remove('hidden');
+            document.getElementById('chat-modal').classList.add('flex');
+            await loadConversations();
+        }
+
+        function closeChatModal() {
+            document.getElementById('chat-modal').classList.add('hidden');
+            document.getElementById('chat-modal').classList.remove('flex');
+            selectedConversation = null;
+            document.getElementById('no-conversation').classList.remove('hidden');
+            document.getElementById('chat-area').classList.add('hidden');
+        }
+
+        async function loadConversations() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch(API_URL + '/api/conversations?email=' + currentUser.email);
+                const conversations = await response.json();
+                const container = document.getElementById('conversations-list');
+                if (conversations.length === 0) {
+                    container.innerHTML = '<div class="text-center p-4 text-gray-500 text-sm"><p>No tienes conversaciones</p></div>';
+                    return;
+                }
+                container.innerHTML = conversations.map(conv => `
+                    <div class="p-3 cursor-pointer rounded-lg mb-2 hover:bg-gray-100" onclick="selectConversation(${conv.id})">
+                        <div class="flex items-center space-x-3">
+                            <img src="${currentUser.role === 'Cliente' ? conv.pilot_avatar : conv.client_avatar}" class="w-10 h-10 rounded-full">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-sm">${currentUser.role === 'Cliente' ? conv.pilot_name : conv.client_username}</h4>
+                                <p class="text-xs text-gray-600 truncate">${conv.last_message}</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function selectConversation(conversationId) {
+            try {
+                const response = await fetch(API_URL + `/api/conversations/${conversationId}/messages?email=${currentUser.email}`);
+                const data = await response.json();
+                selectedConversation = data.conversation;
+                const avatar = document.getElementById('chat-avatar');
+                const name = document.getElementById('chat-name');
+                if (currentUser.role === 'Cliente') {
+                    avatar.src = selectedConversation.pilot_avatar;
+                    name.textContent = selectedConversation.pilot_name;
+                } else {
+                    avatar.src = selectedConversation.client_avatar;
+                    name.textContent = selectedConversation.client_username;
+                }
+                document.getElementById('no-conversation').classList.add('hidden');
+                document.getElementById('chat-area').classList.remove('hidden');
+                displayMessages(data.messages);
+                updateUnreadCount();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function displayMessages(messages) {
+            const messagesList = document.getElementById('messages-list');
+            if (messages.length === 0) {
+                messagesList.innerHTML = '<div class="text-center text-gray-500 py-8 text-sm"><p>¡Inicia la conversación!</p></div>';
+                return;
+            }
+            messagesList.innerHTML = messages.map(msg => {
+                const isMyMessage = (currentUser.role === 'Cliente' && msg.sender_type === 'client') || 
+                                  (currentUser.role === 'Piloto' && msg.sender_type === 'pilot');
+                return `
+                    <div class="flex ${isMyMessage ? 'justify-end' : 'justify-start'}">
+                        <div class="message-bubble rounded-lg p-3 ${isMyMessage ? 'message-sent' : 'message-received'} text-sm">
+                            <p>${msg.content}</p>
+                            <span class="text-xs opacity-70 block mt-1">${msg.time_ago}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            const container = document.getElementById('messages-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            if (!selectedConversation) return;
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            if (!content) return;
+            try {
+                const response = await fetch(API_URL + `/api/conversations/${selectedConversation.id}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sender_email: currentUser.email, content: content })
+                });
+                if (response.ok) {
+                    input.value = '';
+                    await loadMessages(selectedConversation.id);
+                    await loadConversations();
+                } else {
+                    const error = await response.json();
+                    showNotification('Error: ' + error.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadMessages(conversationId) {
+            try {
+                const response = await fetch(API_URL + `/api/conversations/${conversationId}/messages?email=${currentUser.email}`);
+                const data = await response.json();
+                displayMessages(data.messages);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function startConversationWithPilot(pilotId, pilotName) {
+            if (!currentUser || currentUser.role !== 'Cliente') {
+                showNotification('Solo los clientes pueden iniciar conversaciones', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(API_URL + '/api/conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_email: currentUser.email, pilot_profile_id: pilotId })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showNotification('Conversación iniciada con ' + pilotName, 'success');
+                    openChatModal();
+                    setTimeout(() => selectConversation(data.conversation.id), 500);
+                } else {
+                    showNotification('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // === PILOTOS ===
+        async function loadAllPilots() {
+            const container = document.getElementById('pilots-container');
+            container.innerHTML = '<div class="col-span-full text-center py-8 text-sm">Cargando pilotos...</div>';
+            try {
+                const response = await fetch(API_URL + '/api/pilots');
+                const pilots = await response.json();
+                container.innerHTML = '';
+                if (pilots.length === 0) {
+                    container.innerHTML = '<div class="col-span-full text-center py-8 text-sm">No hay pilotos registrados.</div>';
+                    return;
+                }
+                pilots.forEach(pilot => {
+                    const pilotCard = document.createElement('div');
+                    pilotCard.className = 'bg-white rounded-xl shadow-lg overflow-hidden hover-lift';
+                    pilotCard.innerHTML = `
+                        <div class="relative">
+                            <img class="w-full h-48 md:h-56 object-cover" src="https://picsum.photos/seed/${pilot.id}/400/300" alt="${pilot.name}">
+                            <div class="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded-lg">
+                                <span class="text-xs md:text-sm font-medium">€${pilot.hourly_rate || 50}/hora</span>
+                            </div>
+                        </div>
+                        <div class="p-4 md:p-6">
+                            <h3 class="text-lg md:text-xl font-bold mb-2">${pilot.name}</h3>
+                            <p class="text-gray-600 text-xs md:text-sm mb-4">${pilot.tagline || 'Piloto profesional'}</p>
+                            <div class="space-y-2">
+                                <button onclick="openPilotDetailModal(${pilot.id})" class="w-full bg-primary hover:bg-blue-600 text-white font-semibold py-2 md:py-3 px-4 rounded-lg text-sm md:text-base">Ver Perfil</button>
+                                ${currentUser && currentUser.role === 'Cliente' ? 
+                                    `<button onclick="startConversationWithPilot(${pilot.id}, '${pilot.name.replace(/'/g, "\\'")}')" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-xs md:text-sm">
+                                        <i class="fas fa-comment mr-1"></i>Mensaje
+                                    </button>` : ''
+                                }
+                            </div>
+                        </div>`;
+                    container.appendChild(pilotCard);
+                });
+            } catch (error) {
+                container.innerHTML = '<div class="col-span-full text-center py-8 text-red-500 text-sm">Error al cargar pilotos.</div>';
+            }
+        }
+
+        async function openPilotDetailModal(profileId) {
+            selectedPilot = profileId;
+            const modal = document.getElementById('pilot-detail-modal');
+            const content = document.getElementById('pilot-detail-content');
+            modal.classList.remove('hidden');
+            content.innerHTML = '<p class="text-center py-8">Cargando...</p>';
+            try {
+                const response = await fetch(API_URL + '/api/pilots/' + profileId);
+                const pilot = await response.json();
+                let actionButtons = '';
+                if (currentUser && currentUser.role === 'Cliente') {
+                    actionButtons = `
+                        <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mt-6">
+                            <button onclick="openBookingModal(${pilot.id}, '${pilot.name.replace(/'/g, "\\'")}', ${pilot.hourly_rate})" class="flex-1 bg-accent text-secondary font-bold py-3 px-6 rounded-lg">Solicitar Reserva</button>
+                            <button onclick="startConversationWithPilot(${pilot.id}, '${pilot.name.replace(/'/g, "\\'")}'); closePilotDetailModal();" class="flex-1 bg-green-500 text-white font-bold py-3 px-6 rounded-lg">Enviar Mensaje</button>
+                        </div>`;
+                }
+                content.innerHTML = `
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-6">
+                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                            <img src="https://picsum.photos/seed/${pilot.id}/100/100" class="w-16 h-16 md:w-20 md:h-20 rounded-full">
+                            <div>
+                                <h2 class="text-2xl md:text-3xl font-bold">${pilot.name}</h2>
+                                <p class="text-base md:text-lg text-gray-600">${pilot.tagline || ''}</p>
+                                <p class="text-sm md:text-base text-gray-500">${pilot.location || ''}</p>
+                            </div>
+                        </div>
+                        <div class="text-left md:text-right">
+                            <div class="bg-primary text-white px-4 py-2 rounded-lg inline-block">
+                                <div class="text-xl md:text-2xl font-bold">€${pilot.hourly_rate || 50}/hora</div>
+                            </div>
+                            <button onclick="closePilotDetailModal()" class="mt-2 text-gray-500 text-xl block md:inline">×</button>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <h3 class="text-base md:text-lg font-bold mb-2">Sobre el piloto</h3>
+                        <p class="text-sm md:text-base text-gray-700">${pilot.bio || 'No hay biografía.'}</p>
+                    </div>
+                    ${actionButtons}
+                `;
+            } catch (error) {
+                content.innerHTML = '<p class="text-center text-red-500 py-8">Error al cargar el perfil.</p>';
+            }
+        }
+
+        function closePilotDetailModal() {
+            document.getElementById('pilot-detail-modal').classList.add('hidden');
+        }
+
+        // === RESERVAS ===
+        function openBookingModal(pilotId, pilotName, hourlyRate) {
+            selectedPilot = pilotId;
+            const modal = document.getElementById('booking-modal');
+            modal.classList.remove('hidden');
+            const content = document.getElementById('booking-form-content');
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <p class="text-sm md:text-base">Reservando con: <strong>${pilotName}</strong></p>
+                    <input type="date" id="booking-date" class="w-full px-4 py-2 border rounded-lg text-sm md:text-base" min="${new Date().toISOString().split('T')[0]}">
+                    <input type="time" id="booking-time" class="w-full px-4 py-2 border rounded-lg text-sm md:text-base">
+                    <input type="number" id="booking-duration" min="1" max="8" value="2" class="w-full px-4 py-2 border rounded-lg text-sm md:text-base" placeholder="Duración (horas)">
+                    <textarea id="booking-description" rows="4" placeholder="Descripción del trabajo" class="w-full px-4 py-2 border rounded-lg text-sm md:text-base"></textarea>
+                    <div class="bg-gray-50 p-4 rounded-lg text-sm md:text-base">
+                        <span class="font-medium">Precio estimado: €</span><span id="estimated-price">${hourlyRate * 2}</span>
+                    </div>
+                    <div id="booking-message" class="text-center text-sm"></div>
+                    <div class="flex flex-col md:flex-row justify-end gap-2 md:gap-4">
+                        <button onclick="closeBookingModal()" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg order-2 md:order-1">Cancelar</button>
+                        <button onclick="handleBookingRequest()" class="bg-primary text-white font-bold py-2 px-6 rounded-lg order-1 md:order-2">Confirmar</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('booking-duration').addEventListener('input', function() {
+                document.getElementById('estimated-price').textContent = hourlyRate * this.value;
+            });
+        }
+
+        function closeBookingModal() {
+            document.getElementById('booking-modal').classList.add('hidden');
+        }
+
+        async function handleBookingRequest() {
+            const date = document.getElementById('booking-date').value;
+            const time = document.getElementById('booking-time').value;
+            const duration = parseInt(document.getElementById('booking-duration').value) || 2;
+            const description = document.getElementById('booking-description').value;
+            if (!date || !time || !description) {
+                document.getElementById('booking-message').innerHTML = '<p class="text-red-500">Complete todos los campos</p>';
+                return;
+            }
+            const endHour = parseInt(time.split(':')[0]) + duration;
+            const endTime = endHour.toString().padStart(2, '0') + ':00';
+            try {
+                const response = await fetch(API_URL + '/api/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        client_email: currentUser.email, pilot_id: selectedPilot,
+                        job_description: description, booking_date: date,
+                        start_time: time, end_time: endTime
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                showNotification('Reserva solicitada correctamente', 'success');
+                closeBookingModal();
+                loadMyBookings();
+            } catch (error) {
+                document.getElementById('booking-message').innerHTML = '<p class="text-red-500">' + error.message + '</p>';
+            }
+        }
+
+        function loadMyBookings() {
+            if (!currentUser) return;
+            const listId = currentUser.role === 'Piloto' ? 'bookings-list' : 'client-bookings-list';
+            const list = document.getElementById(listId);
+            if (!list) return;
+            fetch(API_URL + '/api/bookings?email=' + currentUser.email)
+                .then(r => r.json())
+                .then(bookings => {
+                    list.innerHTML = '';
+                    if (bookings.length === 0) {
+                        list.innerHTML = '<p class="text-gray-500 text-sm">No tienes reservas.</p>';
+                        return;
+                    }
+                    bookings.forEach(booking => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-gray-50 border rounded-lg p-3 md:p-4';
+                        let actions = '';
+                        if (currentUser.role === 'Piloto' && booking.status === 'pending') {
+                            actions = `<div class="mt-4 flex flex-col md:flex-row gap-2">
+                                        <button onclick="respondBooking(${booking.id}, 'confirmed')" class="bg-green-500 text-white px-4 py-2 rounded text-sm">Aceptar</button>
+                                        <button onclick="respondBooking(${booking.id}, 'rejected')" class="bg-red-500 text-white px-4 py-2 rounded text-sm">Rechazar</button>
+                                       </div>`;
+                        }
+                        const statusColor = {
+                            'pending': 'text-yellow-600', 'confirmed': 'text-green-600', 
+                            'completed': 'text-blue-600', 'rejected': 'text-red-600', 'paid': 'text-purple-600'
+                        }[booking.status] || 'text-gray-600';
+                        card.innerHTML = `
+                            <h4 class="font-semibold text-sm md:text-base">${currentUser.role === 'Cliente' ? booking.pilot_name : booking.client_username}</h4>
+                            <p class="text-xs md:text-sm text-gray-600">${booking.job_description}</p>
+                            <p class="text-xs md:text-sm"><strong>Fecha:</strong> ${booking.booking_date} ${booking.start_time}-${booking.end_time}</p>
+                            <p class="text-xs md:text-sm"><strong>Estado:</strong> <span class="${statusColor}">${booking.status}</span></p>
+                            ${booking.total_price ? `<p class="text-xs md:text-sm"><strong>Precio:</strong> €${booking.total_price}</p>` : ''}
+                            ${actions}
+                        `;
+                        list.appendChild(card);
+                    });
+                })
+                .catch(() => list.innerHTML = '<p class="text-red-500 text-sm">Error al cargar reservas.</p>');
+        }
+
+        function respondBooking(bookingId, status) {
+            fetch(API_URL + '/api/bookings/' + bookingId + '/respond', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status })
+            })
+            .then(() => {
+                showNotification('Reserva ' + status, 'success');
+                loadMyBookings();
+            })
+            .catch(() => showNotification('Error al actualizar reserva', 'error'));
+        }
+// === DASHBOARD PILOTO ===
+        function switchTab(tabName) {
+            const tabs = ['bookings', 'availability', 'profile', 'certifications', 'services', 'portfolio'];
+            tabs.forEach(tab => {
+                const content = document.getElementById('tab-content-' + tab);
+                const tabBtn = document.getElementById('tab-' + tab);
+                if (content) content.classList.add('hidden');
+                if (tabBtn) {
+                    tabBtn.classList.remove('border-primary', 'text-primary');
+                    tabBtn.classList.add('border-transparent', 'text-gray-500');
+                }
+            });
+            const activeContent = document.getElementById('tab-content-' + tabName);
+            const activeTab = document.getElementById('tab-' + tabName);
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (activeTab) {
+                activeTab.classList.add('border-primary', 'text-primary');
+                activeTab.classList.remove('border-transparent', 'text-gray-500');
+            }
+            if (tabName === 'profile') loadProfile();
+            if (tabName === 'bookings') loadMyBookings();
+            if (tabName === 'availability') loadMyAvailability();
+            if (tabName === 'certifications') { loadMyCertifications(); loadMyBadges(); }
+            if (tabName === 'services') loadMyServices();
+            if (tabName === 'portfolio') loadMyPortfolio();
+        }
+
+        function loadProfile() {
+            if (!currentUser || currentUser.role !== 'Piloto') return;
+            fetch(API_URL + '/api/pilots')
+                .then(r => r.json())
+                .then(pilots => {
+                    const myProfile = pilots.find(p => p.user_id === currentUser.id);
+                    if (myProfile) {
+                        document.getElementById('profile-name').value = myProfile.name || '';
+                        document.getElementById('profile-phone').value = myProfile.phone || '';
+                        document.getElementById('profile-location').value = myProfile.location || '';
+                        document.getElementById('profile-hourly-rate').value = myProfile.hourly_rate || '';
+                        document.getElementById('profile-tagline').value = myProfile.tagline || '';
+                        document.getElementById('profile-bio').value = myProfile.bio || '';
+                    }
+                });
+        }
+
+        function saveProfile() {
+            const data = {
+                email: currentUser.email,
+                name: document.getElementById('profile-name').value,
+                phone: document.getElementById('profile-phone').value,
+                location: document.getElementById('profile-location').value,
+                hourly_rate: document.getElementById('profile-hourly-rate').value,
+                tagline: document.getElementById('profile-tagline').value,
+                bio: document.getElementById('profile-bio').value
+            };
+            fetch(API_URL + '/api/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(() => {
+                document.getElementById('profile-message').innerHTML = '<p class="text-green-500 text-sm">Perfil guardado</p>';
+                showNotification('Perfil actualizado', 'success');
+                loadAllPilots();
+            })
+            .catch(() => document.getElementById('profile-message').innerHTML = '<p class="text-red-500 text-sm">Error</p>');
+        }
+
+        function loadMyServices() {
+            if (!currentUser || currentUser.role !== 'Piloto') return;
+            fetch(API_URL + '/api/pilots')
+                .then(r => r.json())
+                .then(pilots => {
+                    const myProfile = pilots.find(p => p.user_id === currentUser.id);
+                    const serviceList = document.getElementById('service-list');
+                    if (myProfile && myProfile.eventPackages && myProfile.eventPackages.length > 0) {
+                        serviceList.innerHTML = myProfile.eventPackages.map(s => `
+                            <div class="border p-3 rounded mb-2">
+                                <h4 class="font-semibold text-sm md:text-base">${s.name} - €${s.price}</h4>
+                                <p class="text-xs md:text-sm text-gray-600">${s.description}</p>
+                            </div>
+                        `).join('');
+                    } else {
+                        serviceList.innerHTML = '<p class="text-gray-500 text-sm">No tienes servicios.</p>';
+                    }
+                });
+        }
+
+        function addService() {
+            const data = {
+                email: currentUser.email,
+                name: document.getElementById('service-name').value,
+                price: document.getElementById('service-price').value,
+                duration_hours: document.getElementById('service-duration').value,
+                description: document.getElementById('service-description').value
+            };
+            if (!data.name || !data.price || !data.description) {
+                document.getElementById('service-message').innerHTML = '<p class="text-red-500 text-sm">Complete todos los campos</p>';
+                return;
+            }
+            fetch(API_URL + '/api/profile/services', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(() => {
+                document.getElementById('service-message').innerHTML = '<p class="text-green-500 text-sm">Servicio añadido</p>';
+                document.getElementById('service-name').value = '';
+                document.getElementById('service-price').value = '';
+                document.getElementById('service-description').value = '';
+                showNotification('Servicio añadido', 'success');
+                loadMyServices();
+            })
+            .catch(() => document.getElementById('service-message').innerHTML = '<p class="text-red-500 text-sm">Error</p>');
+        }
+
+        function loadMyPortfolio() {
+            if (!currentUser || currentUser.role !== 'Piloto') return;
+            fetch(API_URL + '/api/pilots')
+                .then(r => r.json())
+                .then(pilots => {
+                    const myProfile = pilots.find(p => p.user_id === currentUser.id);
+                    const gallery = document.getElementById('portfolio-gallery');
+                    if (myProfile && myProfile.portfolio && myProfile.portfolio.length > 0) {
+                        gallery.innerHTML = myProfile.portfolio.map(item => `
+                            <div class="relative">
+                                <img src="${API_URL}${item.url}" class="w-full h-20 object-cover rounded">
+                                <button onclick="deletePortfolioItem(${item.id})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs">×</button>
+                            </div>
+                        `).join('');
+                    } else {
+                        gallery.innerHTML = '<p class="col-span-4 text-gray-500 text-center text-sm">Sin imágenes.</p>';
+                    }
+                });
+        }
+
+        function uploadPortfolio() {
+            const fileInput = document.getElementById('portfolio-file');
+            const file = fileInput.files[0];
+            if (!file) {
+                document.getElementById('portfolio-message').innerHTML = '<p class="text-red-500 text-sm">Selecciona un archivo</p>';
+                return;
+            }
+            const formData = new FormData();
+            formData.append('email', currentUser.email);
+            formData.append('file', file);
+            formData.append('title', document.getElementById('portfolio-title').value);
+            formData.append('description', document.getElementById('portfolio-description').value);
+            fetch(API_URL + '/api/profile/portfolio', { method: 'POST', body: formData })
+                .then(() => {
+                    document.getElementById('portfolio-message').innerHTML = '<p class="text-green-500 text-sm">Imagen subida</p>';
+                    fileInput.value = '';
+                    document.getElementById('portfolio-title').value = '';
+                    document.getElementById('portfolio-description').value = '';
+                    showNotification('Imagen añadida', 'success');
+                    loadMyPortfolio();
+                })
+                .catch(() => document.getElementById('portfolio-message').innerHTML = '<p class="text-red-500 text-sm">Error</p>');
+        }
+
+        function deletePortfolioItem(itemId) {
+            if (confirm('¿Eliminar esta imagen?')) {
+                fetch(API_URL + '/api/portfolio/' + itemId, { method: 'DELETE' })
+                    .then(() => { showNotification('Imagen eliminada', 'success'); loadMyPortfolio(); })
+                    .catch(() => showNotification('Error', 'error'));
+            }
+        }
+
+        function loadMyAvailability() {
+            if (!currentUser || !currentUser.pilot_profile_id) return;
+            fetch(API_URL + '/api/pilots/' + currentUser.pilot_profile_id)
+                .then(r => r.json())
+                .then(pilot => {
+                    const list = document.getElementById('my-availability-list');
+                    if (pilot.availability && pilot.availability.length > 0) {
+                        list.innerHTML = pilot.availability.map(slot => `
+                            <div class="flex justify-between items-center bg-white p-3 rounded border text-sm">
+                                <span>${slot.date} ${slot.start_time}-${slot.end_time}</span>
+                                <button onclick="deleteSlot(${slot.id})" class="text-red-500">×</button>
+                            </div>
+                        `).join('');
+                    } else {
+                        list.innerHTML = '<p class="text-gray-500 text-sm">Sin horarios.</p>';
+                    }
+                });
+        }
+
+        function addAvailabilitySlot() {
+            const date = document.getElementById('availability-date').value;
+            const start = document.getElementById('availability-start').value;
+            const end = document.getElementById('availability-end').value;
+            if (!date || !start || !end) {
+                document.getElementById('availability-message').innerHTML = '<p class="text-red-500 text-sm">Complete todos los campos</p>';
+                return;
+            }
+            fetch(API_URL + '/api/pilots/' + currentUser.pilot_profile_id + '/availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentUser.email, date, start_time: start, end_time: end })
+            })
+            .then(() => {
+                document.getElementById('availability-message').innerHTML = '<p class="text-green-500 text-sm">Horario añadido</p>';
+                document.getElementById('availability-date').value = '';
+                document.getElementById('availability-start').value = '';
+                document.getElementById('availability-end').value = '';
+                showNotification('Disponibilidad añadida', 'success');
+                loadMyAvailability();
+            })
+            .catch(() => document.getElementById('availability-message').innerHTML = '<p class="text-red-500 text-sm">Error</p>');
+        }
+
+        function deleteSlot(slotId) {
+            if (confirm('¿Eliminar este horario?')) {
+                fetch(API_URL + '/api/availability/' + slotId, { method: 'DELETE' })
+                    .then(() => { showNotification('Horario eliminado', 'success'); loadMyAvailability(); })
+                    .catch(() => showNotification('Error', 'error'));
+            }
+        }
+
+        async function loadMyCertifications() {
+            if (!currentUser || !currentUser.pilot_profile_id) return;
+            try {
+                const response = await fetch(API_URL + '/api/pilots/' + currentUser.pilot_profile_id + '/certifications');
+                const certifications = await response.json();
+                const container = document.getElementById('my-certifications-list');
+                if (certifications.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center text-sm">Sin certificaciones</p>';
+                    return;
+                }
+                container.innerHTML = certifications.map(cert => {
+                    const statusColor = { 'pending': 'bg-yellow-100 text-yellow-800', 'verified': 'bg-green-100 text-green-800', 'rejected': 'bg-red-100 text-red-800' }[cert.verification_status];
+                    const typeLabels = { 'license': 'Licencia', 'insurance': 'Seguro', 'training': 'Formación', 'specialization': 'Especialización' };
+                    return `
+                        <div class="bg-white border rounded-lg p-3 md:p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex-1">
+                                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                                        <span class="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">${typeLabels[cert.certification_type]}</span>
+                                        <span class="px-2 py-1 rounded text-xs font-semibold ${statusColor}">${cert.verification_status === 'pending' ? 'Pendiente' : cert.verification_status === 'verified' ? 'Verificado ✓' : 'Rechazado'}</span>
+                                        ${cert.is_expired ? '<span class="px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800">Caducado</span>' : ''}
+                                    </div>
+                                    <h4 class="font-semibold text-sm md:text-base">${cert.name}</h4>
+                                    <p class="text-xs md:text-sm text-gray-600">${cert.description || ''}</p>
+                                    <div class="text-xs text-gray-500 mt-2">
+                                        ${cert.issue_date ? `<span>Emisión: ${new Date(cert.issue_date).toLocaleDateString()}</span>` : ''}
+                                        ${cert.expiry_date ? ` | <span>Caducidad: ${new Date(cert.expiry_date).toLocaleDateString()}</span>` : ''}
+                                    </div>
+                                    ${cert.document_url ? `<a href="${API_URL}${cert.document_url}" target="_blank" class="text-primary hover:underline text-xs mt-2 inline-block"><i class="fas fa-file-download mr-1"></i>Ver documento</a>` : ''}
+                                </div>
+                                <button onclick="deleteCertification(${cert.id})" class="text-red-600 hover:text-red-800 ml-4"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function addCertification() {
+            if (!currentUser || !currentUser.pilot_profile_id) return;
+            const certType = document.getElementById('cert-type').value;
+            const certName = document.getElementById('cert-name').value;
+            const certDescription = document.getElementById('cert-description').value;
+            const certIssueDate = document.getElementById('cert-issue-date').value;
+            const certExpiryDate = document.getElementById('cert-expiry-date').value;
+            const certFile = document.getElementById('cert-document').files[0];
+            if (!certName) {
+                document.getElementById('certification-message').innerHTML = '<p class="text-red-500 text-sm">El nombre es requerido</p>';
+                return;
+            }
+            const formData = new FormData();
+            formData.append('email', currentUser.email);
+            formData.append('pilot_id', currentUser.pilot_profile_id);
+            formData.append('certification_type', certType);
+            formData.append('name', certName);
+            formData.append('description', certDescription);
+            if (certIssueDate) formData.append('issue_date', certIssueDate);
+            if (certExpiryDate) formData.append('expiry_date', certExpiryDate);
+            if (certFile) formData.append('document', certFile);
+            try {
+                const response = await fetch(API_URL + '/api/pilots/' + currentUser.pilot_profile_id + '/certifications', {
+                    method: 'POST', body: formData
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('certification-message').innerHTML = '<p class="text-green-500 text-sm">Certificación añadida</p>';
+                    document.getElementById('cert-name').value = '';
+                    document.getElementById('cert-description').value = '';
+                    document.getElementById('cert-issue-date').value = '';
+                    document.getElementById('cert-expiry-date').value = '';
+                    document.getElementById('cert-document').value = '';
+                    showNotification('Certificación añadida', 'success');
+                    loadMyCertifications();
+                } else {
+                    document.getElementById('certification-message').innerHTML = '<p class="text-red-500 text-sm">Error: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteCertification(certId) {
+            if (!confirm('¿Eliminar esta certificación?')) return;
+            try {
+                const response = await fetch(API_URL + '/api/certifications/' + certId, { method: 'DELETE' });
+                if (response.ok) {
+                    showNotification('Certificación eliminada', 'success');
+                    loadMyCertifications();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadMyBadges() {
+            if (!currentUser || !currentUser.pilot_profile_id) return;
+            try {
+                const response = await fetch(API_URL + '/api/pilots/' + currentUser.pilot_profile_id);
+                const pilot = await response.json();
+                const container = document.getElementById('my-badges-list');
+                if (!pilot.badges || pilot.badges.length === 0) {
+                    container.innerHTML = '<p class="col-span-3 text-gray-500 text-center text-sm">No tienes badges</p>';
+                    return;
+                }
+                const badgeIcons = { 'wedding': '💍', 'real_estate': '🏢', 'inspection': '🔧', 'agriculture': '🌾', 'film': '🎬', 'sports': '⚽' };
+                container.innerHTML = pilot.badges.map(badge => `
+                    <div class="bg-white border-2 border-${badge.color}-300 rounded-lg p-3 md:p-4 text-center hover-lift">
+                        <div class="text-3xl md:text-4xl mb-2">${badgeIcons[badge.badge_type] || '🏆'}</div>
+                        <h5 class="font-semibold text-xs md:text-sm mb-1">${badge.name}</h5>
+                        <button onclick="deleteBadge(${badge.id})" class="text-red-600 hover:text-red-800 text-xs mt-2"><i class="fas fa-times"></i> Eliminar</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function addBadge() {
+            if (!currentUser || !currentUser.pilot_profile_id) return;
+            const badgeType = document.getElementById('badge-type-select').value;
+            if (!badgeType) {
+                document.getElementById('badge-message').innerHTML = '<p class="text-red-500 text-sm">Selecciona una especialidad</p>';
+                return;
+            }
+            try {
+                const response = await fetch(API_URL + '/api/pilots/' + currentUser.pilot_profile_id + '/badges', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentUser.email, badge_type: badgeType })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('badge-message').innerHTML = '<p class="text-green-500 text-sm">Badge añadido</p>';
+                    document.getElementById('badge-type-select').value = '';
+                    showNotification('Badge añadido', 'success');
+                    loadMyBadges();
+                } else {
+                    document.getElementById('badge-message').innerHTML = '<p class="text-red-500 text-sm">Error: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteBadge(badgeId) {
+            if (!confirm('¿Eliminar este badge?')) return;
+            try {
+                const response = await fetch(API_URL + '/api/badges/' + badgeId, { method: 'DELETE' });
+                if (response.ok) {
+                    showNotification('Badge eliminado', 'success');
+                    loadMyBadges();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
